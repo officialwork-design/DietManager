@@ -1,13 +1,25 @@
 # DietManager
 
-GitHub Pagesで開いたLIFFアプリからLINEプロフィールを取得し、Google Apps Script(GAS)経由でGoogleスプレッドシートへ保存する最小構成です。
+LINE LIFF上で体重・食事・目標カロリー・自由項目を手入力して記録できるアプリです。GitHub Pagesで開いたLIFFアプリからGoogle Apps Script(GAS)経由でGoogleスプレッドシートへ保存します。
 
-現段階の目的はユーザー基盤の安定化です。LIFFログインしたLINEユーザーを `liff_users` シートに **1ユーザー1行** で保存し、再ログイン時は同じ行を更新します(重複登録なし)。
+- 第1段階(完了): LIFFログインしたLINEユーザーを `liff_users` シートに **1ユーザー1行** で保存(再ログイン時は更新、重複登録なし)
+- 第2段階(完了): 体重・食事・目標カロリー・自由項目の手入力、保存済みデータの一覧表示、編集・更新
+
+## 主な機能
+
+- 体重記録(履歴型: 保存するたびに行が増える)
+- 食事記録(履歴型、食事区分・カロリー・メモ付き)
+- 目標体重・目標カロリー設定(ユーザーごとに1行でupsert)
+- 自由項目記録(項目名+値を自由に追加できる履歴型)
+- 保存済みデータの一覧表示(ログインユーザー本人の記録のみ)
+- 一覧からの編集・更新(`id` 単位で上書き)
+
+自動カロリー計算・画像認識・AI分析・LINE通知は未実装(対象外)です。
 
 ## 構成
 
 - Frontend: `index.html`, `config.js`, `style.css`, `app.js`
-- GAS: `gas/Code.gs`, `gas/Config.gs`, `gas/SheetService.gs`, `gas/AuthService.gs`
+- GAS: `gas/Code.gs`, `gas/Config.gs`, `gas/SheetService.gs`, `gas/AuthService.gs`, `gas/DietService.gs`
 
 ## 環境値
 
@@ -34,6 +46,77 @@ GitHub Pagesで開いたLIFFアプリからLINEプロフィールを取得し、
 | `lastLoginAt` | 最終ログイン日時(ログインごとに更新) |
 | `createdAt` | 初回登録日時(以後変更しない) |
 | `updatedAt` | 最終更新日時(ログインごとに更新) |
+
+### 記録用シート(第2段階)
+
+いずれも存在しなければ初回アクセス時に自動作成され、ヘッダー不足時は自動補完されます。`userId` で必ずユーザーに紐づき、他ユーザーのデータは返しません。
+
+**`weight_logs`(体重・履歴型)**
+
+| 列 | 内容 |
+| --- | --- |
+| `id` | 記録ID(`wt_` + UUID。編集・更新のキー) |
+| `userId` | LINEユーザーID |
+| `date` | 記録日(yyyy-MM-dd) |
+| `weight` | 体重(kg、手入力) |
+| `memo` | メモ |
+| `createdAt` / `updatedAt` | 作成・更新日時 |
+
+**`meal_logs`(食事・履歴型)**
+
+| 列 | 内容 |
+| --- | --- |
+| `id` | 記録ID(`ml_` + UUID) |
+| `userId` | LINEユーザーID |
+| `date` | 記録日 |
+| `mealType` | 食事区分(朝食/昼食/夕食/間食) |
+| `foodName` | 食事内容 |
+| `calorie` | カロリー(kcal、手入力・任意) |
+| `memo` | メモ |
+| `createdAt` / `updatedAt` | 作成・更新日時 |
+
+**`user_goals`(目標・1ユーザー1行upsert)**
+
+| 列 | 内容 |
+| --- | --- |
+| `userId` | LINEユーザーID(主キー) |
+| `targetWeight` | 目標体重(kg) |
+| `targetCalorie` | 目標カロリー(kcal/日) |
+| `goalType` | 目標タイプ(減量/維持/増量) |
+| `memo` | メモ |
+| `createdAt` / `updatedAt` | 作成・更新日時 |
+
+**`custom_logs`(自由項目・履歴型)**
+
+| 列 | 内容 |
+| --- | --- |
+| `id` | 記録ID(`cs_` + UUID) |
+| `userId` | LINEユーザーID |
+| `date` | 記録日 |
+| `itemName` | 項目名(例: 腹囲) |
+| `itemValue` | 値(例: 81.5cm) |
+| `memo` | メモ |
+| `createdAt` / `updatedAt` | 作成・更新日時 |
+
+## doPost action一覧
+
+`doPost` はJSONボディの `action` で処理を振り分けます。`action` なしは従来どおりユーザー保存(`saveUser`)です。
+
+| action | 内容 | 主なパラメータ |
+| --- | --- | --- |
+| (なし) / `saveUser` | LIFFユーザーをupsert | `userId`, `displayName`, ... |
+| `saveWeight` | 体重を新規保存 | `userId`, `date`, `weight`, `memo` |
+| `updateWeight` | 体重記録を更新 | `userId`, `id`, 更新フィールド |
+| `saveMeal` | 食事を新規保存 | `userId`, `date`, `mealType`, `foodName`, `calorie`, `memo` |
+| `updateMeal` | 食事記録を更新 | `userId`, `id`, 更新フィールド |
+| `saveGoal` / `updateGoal` | 目標をupsert(1ユーザー1行) | `userId`, `targetWeight`, `targetCalorie`, `goalType`, `memo` |
+| `saveCustomLog` | 自由項目を新規保存 | `userId`, `date`, `itemName`, `itemValue`, `memo` |
+| `updateCustomLog` | 自由項目を更新 | `userId`, `id`, 更新フィールド |
+| `getDashboardData` | 本人の目標+記録一覧を取得 | `userId` |
+
+- 保存系のレスポンス: `{ "ok": true, "message": "Saved", "mode": "created|updated", "id": "..." }`
+- `getDashboardData` のレスポンス: `{ "ok": true, "data": { "goal": {...}, "weights": [...], "meals": [...], "customLogs": [...] } }`(各一覧は日付降順・最大50件)
+- 更新時は `id` の行の `userId` が一致しない場合エラーになります(他ユーザーの記録は編集不可)
 
 ## 動作仕様
 
@@ -93,22 +176,32 @@ GAS Connected
 5. GASをWebアプリとしてデプロイする(下記)
 6. `config.js` に `LIFF_ID` と `GAS_WEB_APP_URL` を設定する
 
-## GASデプロイ手順
+## デプロイ手順
 
-1. Apps Scriptエディタで「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」
-2. 設定:
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-3. 発行されたWeb App URLを `config.js` の `GAS_WEB_APP_URL` に反映する
+リポジトリはclasp連携済みです(`.clasp.json` → `rootDir: gas`)。
 
-**注意:** GASのコードを変更した場合は「デプロイを管理」から既存デプロイの**新しいバージョン**を発行しないと反映されません。
+```bash
+# フロント(GitHub Pagesが自動反映)
+git push origin main
+
+# GAS(pushだけでは本番Web Appに反映されない)
+clasp push -f
+clasp deploy -i AKfycby6v4qJsgjf8gSrjQGabbhA56Uk4CU8QX59LZBjphlkCZVmE7TUiobBL4pyw83HgjTk -d "Add diet input screens"
+```
+
+`clasp deploy -i 既存デプロイID` で同じWeb App URLのまま新バージョンが発行されるため、`config.js` の変更は不要です。
+
+初回のみApps Script側の設定: 「デプロイ」→ 種類「ウェブアプリ」、Execute as: **Me** / Who has access: **Anyone**。
 
 ## 運用手順
 
-1. GitHub Pages URLをLINEアプリ内で開く
-2. LINEログインする
-3. 画面に `ユーザー情報保存完了` が表示される
-4. スプレッドシートの `liff_users` に1ユーザー1行で保存される(再ログインで同じ行が更新される)
+1. GitHub Pages URLをLINEアプリ内で開き、LINEログインする
+2. 画面に `ユーザー情報保存完了` が表示され、入力画面が開く
+3. 目標設定で目標体重・目標カロリーを入力して保存(再保存で上書き)
+4. 今日の体重を入力して保存
+5. 食事(区分・内容・カロリー)を入力して保存
+6. 必要に応じて自由項目(項目名+値)を追加
+7. 「保存済みデータ」で自分の記録を確認し、「編集」ボタンでフォームに読み込んで修正・更新する
 
 ## トラブルシュート
 
@@ -141,6 +234,34 @@ GAS Connected
 
 - Endpoint URLは `https://officialwork-design.github.io/DietManager/` を設定する
 - URLが違うとログイン後のリダイレクトが失敗し、`400 Bad Request` などになる
+
+### 保存できない(体重・食事・目標・自由項目)
+
+- フォーム下の赤いメッセージと画面下部のエラー欄を確認する
+- 必須項目(体重、食事内容、項目名)が空だと `xxx is required.` エラーになる
+- GASのコード変更後に新バージョンをデプロイしたか確認する(下記「GAS Web Appのバージョンが古い」)
+
+### 記録用シートが作成されない
+
+- シートは**最初の保存時**に自動作成される(何も保存していなければ存在しなくて正常)
+- GASの実行ユーザーがスプレッドシートの編集権限を持っているか確認する
+
+### 自分のデータが表示されない
+
+- `getDashboardData` は `userId` が一致する行だけ返すため、シート上の `userId` と画面のUser ID表示が一致しているか確認する
+- 「再読み込み」ボタンで再取得する
+- 一覧は日付降順で最大50件まで表示される
+
+### LIFFログイン後に入力画面が出ない
+
+- 入力画面は「ユーザー情報保存完了」の後に表示される。エラー欄に失敗理由が出ていないか確認する
+- GitHub Pagesの反映待ちの可能性があるため、数分待ってからLIFFを開き直す
+
+### GAS Web Appのバージョンが古い
+
+- `clasp push -f` だけでは本番Web Appは更新されない。必ず `clasp deploy -i 既存デプロイID -d "..."` を実行する
+- `clasp list-deployments` で本番デプロイIDのバージョンと説明を確認できる
+- 症状例: 新しいactionを送ると `Unknown action` や旧形式のレスポンスが返る
 
 ### 旧形式のシートが残っている場合
 

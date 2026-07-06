@@ -48,6 +48,52 @@ function getHeaderColumnMap_(sheet) {
   return map;
 }
 
+function generateId_(prefix) {
+  return prefix + '_' + Utilities.getUuid();
+}
+
+function writeRowValues_(sheet, row, columns, values) {
+  Object.keys(values).forEach(function (key) {
+    if (columns[key]) {
+      sheet.getRange(row, columns[key]).setValue(values[key]);
+    }
+  });
+}
+
+function getRowsAsObjects_(sheet) {
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+
+  if (lastRow < 2 || lastColumn < 1) {
+    return [];
+  }
+
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(String);
+  var rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+
+  return rows.map(function (row) {
+    var record = {};
+
+    headers.forEach(function (header, index) {
+      record[header] = normalizeCellValue_(header, row[index]);
+    });
+
+    return record;
+  });
+}
+
+function normalizeCellValue_(header, value) {
+  if (value instanceof Date) {
+    if (header === 'date') {
+      return Utilities.formatDate(value, 'Asia/Tokyo', 'yyyy-MM-dd');
+    }
+
+    return value.toISOString();
+  }
+
+  return value;
+}
+
 function findRowByColumnValue_(sheet, column, value) {
   var lastRow = sheet.getLastRow();
 

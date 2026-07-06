@@ -10,15 +10,48 @@ function doGet() {
 function doPost(e) {
   try {
     var payload = parseRequestBody_(e);
-    var profile = validateProfilePayload_(payload);
-    var result = upsertLiffUser(profile);
+    var action = payload.action || 'saveUser';
 
-    return createJsonOutput_({
-      ok: true,
-      message: 'User saved',
-      mode: result.mode,
-      userId: result.userId
-    });
+    if (action === 'saveUser') {
+      var profile = validateProfilePayload_(payload);
+      var result = upsertLiffUser(profile);
+
+      return createJsonOutput_({
+        ok: true,
+        message: 'User saved',
+        mode: result.mode,
+        userId: result.userId
+      });
+    }
+
+    if (action === 'getDashboardData') {
+      return createJsonOutput_({
+        ok: true,
+        message: 'OK',
+        data: getDashboardData_(payload.userId)
+      });
+    }
+
+    var handlers = {
+      saveWeight: saveWeight_,
+      saveMeal: saveMeal_,
+      saveGoal: saveGoal_,
+      saveCustomLog: saveCustomLog_,
+      updateWeight: updateWeight_,
+      updateMeal: updateMeal_,
+      updateGoal: updateGoal_,
+      updateCustomLog: updateCustomLog_
+    };
+
+    var handler = handlers[action];
+
+    if (!handler) {
+      throw new Error('Unknown action: ' + action);
+    }
+
+    var saved = handler(payload);
+
+    return createJsonOutput_(Object.assign({ ok: true, message: 'Saved' }, saved));
   } catch (error) {
     return createJsonOutput_({
       ok: false,

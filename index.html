@@ -28,6 +28,131 @@
         <p id="errorMessage" class="error-message">なし</p>
       </section>
 
+      <section id="dietPanel" class="hidden">
+        <section class="form-card">
+          <h2>目標設定</h2>
+          <p id="goalSummary" class="goal-summary">目標は未設定です</p>
+          <form id="goalForm">
+            <label class="field">
+              <span class="field-label">目標体重 (kg)</span>
+              <input type="number" id="goalTargetWeight" step="0.1" min="0" inputmode="decimal" placeholder="例: 65.0" />
+            </label>
+            <label class="field">
+              <span class="field-label">目標カロリー (kcal/日)</span>
+              <input type="number" id="goalTargetCalorie" step="1" min="0" inputmode="numeric" placeholder="例: 1800" />
+            </label>
+            <label class="field">
+              <span class="field-label">目標タイプ</span>
+              <select id="goalGoalType">
+                <option value="減量">減量</option>
+                <option value="維持">維持</option>
+                <option value="増量">増量</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">メモ</span>
+              <input type="text" id="goalMemo" placeholder="任意" />
+            </label>
+            <button type="submit" id="goalSubmit" class="btn primary">目標を保存</button>
+            <p id="goalMessage" class="form-message hidden"></p>
+          </form>
+        </section>
+
+        <section class="form-card">
+          <h2>今日の体重</h2>
+          <form id="weightForm">
+            <label class="field">
+              <span class="field-label">日付</span>
+              <input type="date" id="weightDate" required />
+            </label>
+            <label class="field">
+              <span class="field-label">体重 (kg)</span>
+              <input type="number" id="weightValue" step="0.1" min="0" inputmode="decimal" placeholder="例: 66.4" required />
+            </label>
+            <label class="field">
+              <span class="field-label">メモ</span>
+              <input type="text" id="weightMemo" placeholder="任意" />
+            </label>
+            <button type="submit" id="weightSubmit" class="btn primary">体重を保存</button>
+            <button type="button" id="weightCancel" class="btn ghost block hidden">編集をやめる</button>
+            <p id="weightMessage" class="form-message hidden"></p>
+          </form>
+        </section>
+
+        <section class="form-card">
+          <h2>食事記録</h2>
+          <form id="mealForm">
+            <label class="field">
+              <span class="field-label">日付</span>
+              <input type="date" id="mealDate" required />
+            </label>
+            <label class="field">
+              <span class="field-label">食事区分</span>
+              <select id="mealType">
+                <option value="朝食">朝食</option>
+                <option value="昼食">昼食</option>
+                <option value="夕食">夕食</option>
+                <option value="間食">間食</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">食事内容</span>
+              <input type="text" id="mealFoodName" placeholder="例: 唐揚げ定食" required />
+            </label>
+            <label class="field">
+              <span class="field-label">カロリー (kcal)</span>
+              <input type="number" id="mealCalorie" step="1" min="0" inputmode="numeric" placeholder="任意" />
+            </label>
+            <label class="field">
+              <span class="field-label">メモ</span>
+              <input type="text" id="mealMemo" placeholder="任意" />
+            </label>
+            <button type="submit" id="mealSubmit" class="btn primary">食事を保存</button>
+            <button type="button" id="mealCancel" class="btn ghost block hidden">編集をやめる</button>
+            <p id="mealMessage" class="form-message hidden"></p>
+          </form>
+        </section>
+
+        <section class="form-card">
+          <h2>自由項目</h2>
+          <form id="customForm">
+            <label class="field">
+              <span class="field-label">日付</span>
+              <input type="date" id="customDate" required />
+            </label>
+            <label class="field">
+              <span class="field-label">項目名</span>
+              <input type="text" id="customItemName" placeholder="例: 腹囲" required />
+            </label>
+            <label class="field">
+              <span class="field-label">値</span>
+              <input type="text" id="customItemValue" placeholder="例: 81.5cm" />
+            </label>
+            <label class="field">
+              <span class="field-label">メモ</span>
+              <input type="text" id="customMemo" placeholder="任意" />
+            </label>
+            <button type="submit" id="customSubmit" class="btn primary">項目を保存</button>
+            <button type="button" id="customCancel" class="btn ghost block hidden">編集をやめる</button>
+            <p id="customMessage" class="form-message hidden"></p>
+          </form>
+        </section>
+
+        <section class="form-card">
+          <div class="list-header">
+            <h2>保存済みデータ</h2>
+            <button type="button" id="reloadDashboard" class="btn ghost small">再読み込み</button>
+          </div>
+          <p id="dashboardStatus" class="form-message hidden"></p>
+          <h3>体重記録</h3>
+          <div id="weightList" class="log-list"></div>
+          <h3>食事記録</h3>
+          <div id="mealList" class="log-list"></div>
+          <h3>自由項目</h3>
+          <div id="customList" class="log-list"></div>
+        </section>
+      </section>
+
       <div class="profile-box">
         <img id="picture" class="avatar hidden" alt="LINE profile image" />
         <div>
