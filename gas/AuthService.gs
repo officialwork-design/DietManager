@@ -12,8 +12,7 @@ function validateProfilePayload_(payload) {
     displayName: normalizeString_(payload.displayName || 'LINE User'),
     pictureUrl: normalizeString_(payload.pictureUrl || ''),
     statusMessage: normalizeString_(payload.statusMessage || ''),
-    sourceUrl: normalizeString_(payload.sourceUrl || ''),
-    clientTimestamp: normalizeString_(payload.clientTimestamp || '')
+    language: normalizeString_(payload.language || '')
   };
 }
 
@@ -21,22 +20,44 @@ function normalizeString_(value) {
   return String(value).trim();
 }
 
-function buildSuccessResponse_(profile, sheetResult) {
-  return {
-    ok: true,
-    message: 'GAS Connected',
-    appName: CONFIG.APP_NAME,
-    displayName: profile.displayName,
-    userId: profile.userId,
-    sheet: sheetResult,
-    serverTimestamp: new Date().toISOString()
-  };
-}
+function upsertLiffUser(profile) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
 
-function buildErrorResponse_(error) {
-  return {
-    ok: false,
-    message: error.message || String(error),
-    serverTimestamp: new Date().toISOString()
-  };
+  try {
+    var sheet = getOrCreateSheet_(CONFIG.USER_SHEET_NAME, CONFIG.USER_HEADERS);
+    var columns = getHeaderColumnMap_(sheet);
+    var now = new Date().toISOString();
+    var row = findRowByColumnValue_(sheet, columns.userId, profile.userId);
+    var mode = row === -1 ? 'created' : 'updated';
+
+    var values = {
+      userId: profile.userId,
+      displayName: profile.displayName,
+      pictureUrl: profile.pictureUrl,
+      statusMessage: profile.statusMessage,
+      language: profile.language,
+      lastLoginAt: now,
+      updatedAt: now
+    };
+
+    if (mode === 'created') {
+      values.createdAt = now;
+      row = sheet.getLastRow() + 1;
+    }
+
+    Object.keys(values).forEach(function (key) {
+      if (columns[key]) {
+        sheet.getRange(row, columns[key]).setValue(values[key]);
+      }
+    });
+
+    return {
+      mode: mode,
+      row: row,
+      userId: profile.userId
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }

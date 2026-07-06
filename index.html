@@ -18,8 +18,14 @@
 
       <section class="hello-panel" aria-live="polite">
         <p id="helloText" class="hello-text">Hello World</p>
-        <p id="lineStatus" class="check-line">LINEログイン待機中</p>
-        <p id="gasStatus" class="check-line">GAS未接続</p>
+        <p id="lineStatus" class="check-line pending">LINEログイン待機中</p>
+        <p id="gasStatus" class="check-line pending">GAS未接続</p>
+        <p id="saveStatus" class="check-line pending">保存待機中</p>
+      </section>
+
+      <section id="errorBox" class="error-box hidden" role="alert">
+        <p class="label">エラー</p>
+        <p id="errorMessage" class="error-message">なし</p>
       </section>
 
       <div class="profile-box">

@@ -11,11 +11,19 @@ function doPost(e) {
   try {
     var payload = parseRequestBody_(e);
     var profile = validateProfilePayload_(payload);
-    var sheetResult = appendLoginEvent_(profile, payload);
+    var result = upsertLiffUser(profile);
 
-    return createJsonOutput_(buildSuccessResponse_(profile, sheetResult));
+    return createJsonOutput_({
+      ok: true,
+      message: 'User saved',
+      mode: result.mode,
+      userId: result.userId
+    });
   } catch (error) {
-    return createJsonOutput_(buildErrorResponse_(error));
+    return createJsonOutput_({
+      ok: false,
+      message: error.message || String(error)
+    });
   }
 }
 

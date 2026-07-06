@@ -1,61 +1,67 @@
-function appendLoginEvent_(profile, rawPayload) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-
-  try {
-    var sheet = getLogSheet_();
-    var receivedAt = new Date();
-
-    sheet.appendRow([
-      receivedAt,
-      profile.userId,
-      profile.displayName,
-      profile.pictureUrl,
-      profile.statusMessage,
-      profile.sourceUrl,
-      profile.clientTimestamp,
-      JSON.stringify(rawPayload)
-    ]);
-
-    return {
-      spreadsheetId: CONFIG.SPREADSHEET_ID,
-      sheetName: CONFIG.SHEET_NAME,
-      row: sheet.getLastRow()
-    };
-  } finally {
-    lock.releaseLock();
-  }
+function getSpreadsheet_() {
+  return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 }
 
-function getLogSheet_() {
-  var spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var sheet = spreadsheet.getSheetByName(CONFIG.SHEET_NAME);
+function getOrCreateSheet_(sheetName, headers) {
+  var spreadsheet = getSpreadsheet_();
+  var sheet = spreadsheet.getSheetByName(sheetName);
 
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(CONFIG.SHEET_NAME);
+    sheet = spreadsheet.insertSheet(sheetName);
   }
 
-  ensureHeaderRow_(sheet);
+  ensureHeaders_(sheet, headers);
   return sheet;
 }
 
-function ensureHeaderRow_(sheet) {
-  var headers = [
-    'receivedAt',
-    'userId',
-    'displayName',
-    'pictureUrl',
-    'statusMessage',
-    'sourceUrl',
-    'clientTimestamp',
-    'rawJson'
-  ];
+function ensureHeaders_(sheet, headers) {
+  var lastColumn = sheet.getLastColumn();
+  var current = lastColumn > 0
+    ? sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(String)
+    : [];
 
-  var range = sheet.getRange(1, 1, 1, headers.length);
-  var current = range.getValues()[0];
-
-  if (current.join('') !== headers.join('')) {
-    range.setValues([headers]);
+  if (current.join('') === '') {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
+    return;
   }
+
+  var missing = headers.filter(function (header) {
+    return current.indexOf(header) === -1;
+  });
+
+  if (missing.length > 0) {
+    sheet.getRange(1, current.length + 1, 1, missing.length).setValues([missing]);
+  }
+
+  sheet.setFrozenRows(1);
+}
+
+function getHeaderColumnMap_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var map = {};
+
+  headers.forEach(function (header, index) {
+    map[String(header)] = index + 1;
+  });
+
+  return map;
+}
+
+function findRowByColumnValue_(sheet, column, value) {
+  var lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return -1;
+  }
+
+  var values = sheet.getRange(2, column, lastRow - 1, 1).getValues();
+
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]) === String(value)) {
+      return i + 2;
+    }
+  }
+
+  return -1;
 }

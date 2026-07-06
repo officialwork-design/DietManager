@@ -74,6 +74,26 @@ h1 {
   font-weight: 700;
 }
 
+.check-line.pending {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.error-box {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+}
+
+.error-message {
+  margin: 0;
+  color: #991b1b;
+  font-weight: 700;
+  word-break: break-word;
+}
+
 .profile-box,
 .result-box {
   margin-top: 18px;

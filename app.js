@@ -7,6 +7,9 @@
     helloText: document.getElementById("helloText"),
     lineStatus: document.getElementById("lineStatus"),
     gasStatus: document.getElementById("gasStatus"),
+    saveStatus: document.getElementById("saveStatus"),
+    errorBox: document.getElementById("errorBox"),
+    errorMessage: document.getElementById("errorMessage"),
     picture: document.getElementById("picture"),
     displayName: document.getElementById("displayName"),
     userId: document.getElementById("userId"),
@@ -21,6 +24,16 @@
 
   function setDebug(value) {
     elements.debug.textContent = JSON.stringify(value, null, 2);
+  }
+
+  function markDone(element, message) {
+    element.textContent = message;
+    element.classList.remove("pending");
+  }
+
+  function showError(message) {
+    elements.errorMessage.textContent = message;
+    elements.errorBox.classList.remove("hidden");
   }
 
   function requireConfig() {
@@ -39,7 +52,7 @@
     elements.helloText.textContent = "Hello, " + displayName;
     elements.displayName.textContent = displayName;
     elements.userId.textContent = profile.userId || "未取得";
-    elements.lineStatus.textContent = "LINEログイン成功";
+    markDone(elements.lineStatus, "LINEログイン成功");
 
     if (profile.pictureUrl) {
       elements.picture.src = profile.pictureUrl;
@@ -54,6 +67,7 @@
       displayName: profile.displayName || "",
       pictureUrl: profile.pictureUrl || "",
       statusMessage: profile.statusMessage || "",
+      language: profile.language || "",
       sourceUrl: window.location.href,
       clientTimestamp: new Date().toISOString()
     };
@@ -110,24 +124,30 @@
 
       setStatus("LINEプロフィール取得中...", "loading");
       var profile = await liff.getProfile();
+      profile.language = liff.getLanguage() || "";
       updateProfile(profile);
 
       setStatus("GASへ送信中...", "loading");
+      elements.saveStatus.textContent = "ユーザー情報保存中...";
       var gasResult = await sendProfileToGas(profile);
 
-      elements.gasStatus.textContent = "GAS Connected";
+      markDone(elements.gasStatus, "GAS Connected");
+      markDone(elements.saveStatus, "ユーザー情報保存完了");
       elements.gasResponse.textContent = JSON.stringify(gasResult, null, 2);
-      setStatus("Hello World 表示完了", "success");
+      setStatus("ユーザー情報保存完了", "success");
       setDebug({
         liffId: config.LIFF_ID,
         os: liff.getOS(),
-        language: liff.getLanguage(),
+        language: profile.language,
+        saveMode: gasResult.mode,
         sourceUrl: window.location.href
       });
     } catch (error) {
       elements.gasStatus.textContent = "GAS接続失敗";
+      elements.saveStatus.textContent = "ユーザー情報保存失敗";
       elements.gasResponse.textContent = "未取得";
       setStatus(error.message, "error");
+      showError(error.message);
       setDebug({
         name: error.name,
         message: error.message,
